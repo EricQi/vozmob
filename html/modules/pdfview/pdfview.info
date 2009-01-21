@@ -1,0 +1,8 @@
+; $Id: pdfview.info,v 1.1 2009/1/19 08:26:50 ericqi Exp $
+name = Pdfview
+description = Enables users to view nodes as PDF.
+
+; Information added by drupal.org packaging script on 2007-02-07
+version = "6.x-1.1"
+project = "pdfview"
+

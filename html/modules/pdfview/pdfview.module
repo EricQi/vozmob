@@ -1,0 +1,308 @@
+<?php
+// $Id: pdfview.module,v 1.37.2.6 2007/02/05 15:29:42 egonbianchet Exp $
+
+/**
+ * @file
+ * Renders nodes as PDF files for download
+ */
+
+/**
+ * Implementation of hook_help().
+ */
+ 
+define('PRINTPDF_PATH', 'printpdf'); 
+ 
+/**
+ * Implementation of hook_theme().
+ */
+function pdfview_theme() {
+  return array(
+    'pdfview_pdf' => array(
+      'arguments' => array(),
+    ),
+    'pdfview_node' => array(
+      'arguments' => array(),
+    ),
+    'pdfview_title' => array(
+      'arguments' => array(),
+    ),
+    'pdfview_author' => array(
+      'arguments' => array(),
+    ),
+    'pdfview_published' => array(
+      'arguments' => array(),
+    ),
+    'pdfview_html' => array(
+      'arguments' => array(),
+    ),
+  );
+}
+ 
+ 
+function pdfview_help($path, $arg) {
+  switch ($path) {
+  case 'admin/help#pdfview':
+    return t('View your nodes as PDF.');
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function pdfview_menu() {
+  $items = array();
+    $items['node/%node/pdf'] = array(
+      'title' => 'view as PDF',
+      'page callback' => 'pdfview_node_controller',
+      'page arguments' => array(1),
+      'access callback' => 'user_access',
+      'access arguments' => array('access content as PDF', 1),
+      'type' => MENU_CALLBACK
+      );
+    $items['pdfview/%node'] = array(
+      'title' => 'view as PDF',
+      'page callback' => 'pdfview_node_controller',
+      'page arguments' => array(1),
+      'access callback' => 'user_access',
+      'access arguments' => array('access content as PDF', 1),
+      'type' => MENU_CALLBACK
+      );
+//  }
+  return $items;
+}
+
+/**
+ * Implementation of hook_link().
+ */
+function pdfview_link($type, $node = 0, $main) {
+  $links = array();
+  if ($type == 'node' && $main == 0) {
+    if (user_access('access content as PDF') && variable_get('pdfview_'. $node->type, 1)) {    
+      $links['pdfview_link'] = array(
+        'title' => t('print me'),
+        'href' => "node/$node->nid/pdf",
+        'attributes'=> array('title' => t('Display a PDF version of this page.'))
+      );
+    }
+  }
+  return $links;
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function pdfview_perm() {
+  return array("access content as PDF");
+}
+
+/**
+ * Implementation of hook_form_alter().
+ */
+function pdfview_form_alter(&$form, &$form_state, $form_id) {
+  //alter content type settings
+
+  if ($form_id == 'node_type_form' && isset($form['identity']['type'])) {
+    $form['workflow']['pdfview'] = array(
+      '#type' => 'radios', 
+      '#title' => t('PDF download'), 
+      '#default_value' => variable_get('pdfview_'. $form['identity']['type']['#default_value'], 1),
+      '#options' => array(t('Disabled'), t('Enabled')),
+      );
+  }
+}
+
+/**
+ * Menu callback
+ */
+function pdfview_node_controller() {
+  $nid = arg(1);
+  if (is_numeric($nid)) {
+    $node = node_load($nid);
+    if (variable_get('pdfview_'. $node->type, 1)) {
+      $pdf = pdfview_node($node);
+      pdfview_generate_file($pdf, $node->title);
+    }
+  }
+}
+
+/**
+ * Renders a node as a PDF file.
+ */
+function pdfview_node($node) {
+  $path = drupal_get_path('module', 'pdfview');
+  require_once($path .'/tcpdf/tcpdf.php');
+  
+  $pdf = theme('pdfview_pdf');
+   
+  if ($node->type == 'book') {
+    $depth = PRINTPDF_PATH .'/book/export/html/'. $node->nid + 1;
+    $pdf = pdfview_book_export_recurse($pdf, $node, $depth);
+  }
+  else {
+    $pdf = theme('pdfview_node', $pdf, $node);
+  }
+  
+  return $pdf;
+}
+
+/**
+ * Renders a book as a PDF file.
+ */
+function pdfview_book_export_recurse($pdf, &$node, $depth = 10) {
+  if ($node) {            
+    $pdf = theme('pdfview_node', $pdf, $node);
+
+    $children = db_query(db_rewrite_sql('SELECT n.nid, n.title, b.weight FROM {node} n INNER JOIN {book} b ON n.vid = b.vid WHERE n.status = 1 AND b.parent = %d AND n.moderate = 0 ORDER BY b.weight, n.title'), $node->nid);  
+
+    while ($childpage = db_fetch_object($children)) {
+      $childnode = node_load($childpage->nid);
+      if ($childnode->nid != $node->nid) {
+        $pdf = pdfview_book_recurse($pdf, $childnode, $depth + 1);
+      }
+    }    
+  }    
+  return $pdf;
+} 
+
+/**
+ * Outputs a PDF file.
+ */
+function pdfview_generate_file(&$pdf, $filename) {
+  $filename = strtr(strip_tags($filename), " .,?!&#", "_______");
+  print $pdf->Output($filename .'.pdf', 'I');
+  module_invoke_all('exit');
+  exit;
+}
+
+/**
+ * Open a new PDF document and set its properties
+ * @ingroup themeable
+ */
+function theme_pdfview_pdf() {
+  $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true);
+  $pdf->Open();
+  
+  // set margins
+  $pdf->SetMargins(PDF_MARGIN_LEFT, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
+  $pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
+  $pdf->SetFooterMargin(PDF_MARGIN_FOOTER);
+  
+  // set auto page breaks  
+  $pdf->SetAutoPageBreak(TRUE, PDF_MARGIN_BOTTOM);
+  $pdf->AliasNbPages();
+  
+  // set image scale factor
+  $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
+  
+  $pdf->setHeaderFont(Array(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN));
+  $pdf->setFooterFont(Array(PDF_FONT_NAME_DATA, '', PDF_FONT_SIZE_DATA));
+  
+  return $pdf;
+}
+
+/**
+ * Renders PDF output for a node
+ * @ingroup themeable
+ */
+function theme_pdfview_node(&$pdf, $node) {
+  $pdf->AddPage();
+  
+  $pdf = theme('pdfview_title', $pdf, $node->title);
+  
+  $author = strip_tags(theme('username', $node));
+  $pdf = theme('pdfview_author', $pdf, $author);  
+
+  $pdf = theme('pdfview_published', $pdf, $node->created);
+  
+  if (node_hook($node, 'view')) {
+    node_invoke($node, 'view');
+  }
+  else {
+    $node = node_prepare($node);
+  }
+  node_invoke_nodeapi($node, 'view');
+  
+  
+  $content = "";
+if ($node->node_images) {
+$content = $node->node_images;
+}
+ $content .= drupal_render($node->content);
+
+  $content = pdfview_check_images($content);
+  $pdf->SetFont(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN);
+  $pdf = theme('pdfview_html', $pdf, $content);
+// $pdf = theme('pdfview_html', $pdf, pdfview_check_images(node_view($node)));
+  
+  return $pdf;
+} 
+
+/**
+ * Renders a title
+ * @ingroup themeable
+ */
+function theme_pdfview_title(&$pdf, $title) {
+  $pdf->SetFont(PDF_FONT_NAME_MAIN, 'B',  PDF_FONT_SIZE_MAIN * K_TITLE_MAGNIFICATION);
+  $pdf->SetLineWidth(1);
+  $pdf = theme('pdfview_html', $pdf, $title);
+  $pdf->Ln(5);
+  return $pdf;
+}
+
+/**
+ * Renders an author line
+ * @ingroup themeable
+ */
+function theme_pdfview_author(&$pdf, $author) {
+  $pdf->SetFont(PDF_FONT_NAME_MAIN, 'BI', PDF_FONT_SIZE_MAIN);
+  $pdf->MultiCell(0, 5, t('By @author', array('@author' => $author)), 0, 'L', 0);
+  return $pdf;
+}
+
+/**
+ * Renders a publication date
+ * @ingroup themeable
+ */
+function theme_pdfview_published(&$pdf, $timestamp) {
+  $published = format_date($timestamp, 'small');
+  $pdf->SetFont('', '', PDF_FONT_SIZE_MAIN);
+  $pdf->MultiCell(0, 5, t('Published: @date', array('@date' => $published)), 0, 'L', 0);
+  $pdf->Ln(5);
+  return $pdf;
+}
+
+/**
+ * Renders an HTML string to PDF
+ * @ingroup themeable
+ */
+function theme_pdfview_html(&$pdf, $html) {
+  foreach (explode("\n", $html) as $one) {
+    $pdf->writeHTML($one);
+  }
+  return $pdf;
+}
+
+/**
+ * Ensures that all images are included with absolute paths
+ */
+function pdfview_check_images($string) {
+  return preg_replace_callback('/(?<=src=")(.*?)(?=")/', '_pdfview_rewrite_image_url', $string);
+}
+
+function _pdfview_rewrite_image_url($matches = array()) {
+  $path = $matches[0];
+  $path = str_replace($GLOBALS['base_url'] .'/', '', $path); // removes 'http://www.example.com/'
+  if (base_path() == '/') { // checks if base_path = '/'
+    if ($path[0] == '/') {  // run the following function only if the first sign is '/' and remove it
+      $path = substr($path, 1);
+    }
+  }
+  else {
+    $path = str_replace(base_path(), '', $path);  // if base_path != '/' we can savely remove base_path
+  }
+  if (variable_get('file_downloads', FILE_DOWNLOADS_PUBLIC) == FILE_DOWNLOADS_PRIVATE) {
+    $q = variable_get('clean_url', 0) ? '' : '?q=';
+    $path = str_replace($q .'system/', '', $path);
+  }
+  return $path;
+}

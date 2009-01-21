@@ -1,0 +1,73 @@
+# $Id: pdfview.pot,v 1.1.4.1 2007/01/27 09:32:56 egonbianchet Exp $
+#
+# LANGUAGE translation of Drupal (pdfview.module)
+# Copyright YEAR NAME <EMAIL@ADDRESS>
+# Generated from files:
+#  pdfview.module,v 1.41 2007/01/27 09:07:58 egonbianchet
+#  pdfview.info,v 1.1 2006/10/31 08:26:50 egonbianchet
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"POT-Creation-Date: 2007-01-27 10:20+0100\n"
+"PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
+"Last-Translator: NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: pdfview.module:15
+msgid "View your nodes as PDF."
+msgstr ""
+
+#: pdfview.module:25;30
+msgid "view as PDF"
+msgstr ""
+
+#: pdfview.module:47
+msgid "Download PDF"
+msgstr ""
+
+#: pdfview.module:49
+msgid "Display a PDF version of this page."
+msgstr ""
+
+#: pdfview.module:72
+msgid "PDF download"
+msgstr ""
+
+#: pdfview.module:74
+msgid "Disabled"
+msgstr ""
+
+#: pdfview.module:74
+msgid "Enabled"
+msgstr ""
+
+#: pdfview.module:215
+msgid "By @author"
+msgstr ""
+
+#: pdfview.module:226
+msgid "Published: @date"
+msgstr ""
+
+#: pdfview.module:60
+msgid "access content as PDF"
+msgstr ""
+
+#: pdfview.module:0
+msgid "pdfview"
+msgstr ""
+
+#: pdfview.info:0
+msgid "Pdfview"
+msgstr ""
+
+#: pdfview.info:0
+msgid "Enables users to view nodes as PDF."
+msgstr ""
+

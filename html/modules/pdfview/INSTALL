@@ -1,0 +1,7 @@
+1) Copy pdfview.module to the modules directory of your site.
+2) Retrieve TCPDF from the location given in README.txt.
+3) Copy the entire directory structure from the archive to modules/pdfview.
+4) If necessary, rename the TCPDF directory to 'tcpdf'
+5) Set K_PATH_MAIN costant in tcpdf/config/tcpdf_config.php
+6) Enable the module in site configuration modules.
+7) Set permissions for access.
